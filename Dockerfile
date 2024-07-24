@@ -1,13 +1,12 @@
 ARG DEV=true
 
-# Builer Image
+# Builder Image
 FROM python:3.10-buster as builder
 
 RUN pip install poetry==1.4.2
 
 ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=1 \
-    POETRY_VIRTUALENVS_CREATE=1 \
+    POETRY_VIRTUALENVS_CREATE=0 \
     POETRY_CACHE_DIR=/tmp/poetry_cache
 
 WORKDIR /app
@@ -52,14 +51,15 @@ RUN tar -xvzf Image-ExifTool-12.70.tar.gz && \
     cd .. && \
     rm -rf Image-ExifTool-12.70/ Image-ExifTool-12.70.tar.gz 
 
-ENV VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:$PATH"
-
 WORKDIR /app
 
-COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
+# Copy dependencies from builder stage
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy the application code
 COPY ms_preprocessing ./ms_preprocessing
 
-# CMD ["sh"]
+# Install Jupyter globally
 RUN pip install jupyter
 ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
