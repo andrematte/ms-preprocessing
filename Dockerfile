@@ -60,4 +60,6 @@ WORKDIR /app
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY ms_preprocessing ./ms_preprocessing
 
-CMD ["sh"]
+# CMD ["sh"]
+RUN pip install jupyter
+ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
