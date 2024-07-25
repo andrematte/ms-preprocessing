@@ -58,8 +58,9 @@ COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy the application code
-COPY ms_preprocessing ./ms_preprocessing
+# COPY ms_preprocessing ./ms_preprocessing
 
 # Install Jupyter globally
-RUN pip install jupyter
-ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+# RUN pip install jupyter
+# ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+ENTRYPOINT ["sh"]
