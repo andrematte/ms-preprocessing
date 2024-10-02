@@ -10,8 +10,8 @@ from micasense import capture
 
 set_logger()
 
-image_path = "../BVSA-test"
-output_path = "../BVSA-test-output/"
+image_path = "../data"
+output_path = "../output/"
 panel_file_number = "0000"
 skip_alignment = True
 

@@ -687,7 +687,7 @@ class Capture(object):
         :param photometric: str GDAL argument for GTiff color matching
         """
         from osgeo import gdal
-        from osgeo.gdal import GDT_UInt16, GetDriverByName
+        from osgeo.gdal import GDT_UInt16, GetDriverByName, GDT_Float32
 
         gdal.UseExceptions()
 
@@ -714,7 +714,7 @@ class Capture(object):
             cols,
             rows,
             bands,
-            GDT_UInt16,
+            GDT_Float32,
             options=[
                 "INTERLEAVE=BAND",
                 "COMPRESS=DEFLATE",
@@ -746,33 +746,31 @@ class Capture(object):
             for outband_count, inband in enumerate(eo_list):
                 outband = outRaster.GetRasterBand(outband_count + 1)
                 outdata = aligned_cap[:, :, inband]
+                
+                # Limit reflectance values to 0 - 1.0 (removing any specular reflections)
                 outdata[outdata < 0] = 0
-                outdata[outdata > 2] = (
-                    2  # limit reflectance data to 200% to allow some specular reflections
-                )
-                outdata = (
-                    outdata * 32767
-                )  # scale reflectance images so 100% = 32768
-                outdata = outdata.astype(np.ushort)
+                outdata[outdata > 1] = 1  # Instead of 2, set the maximum reflectance to 1.0
+            
+                # Do not scale reflectance values; keep them as-is
+                outdata = outdata.astype(np.float32)  
                 outband.SetDescription(eo_bands[outband_count])
                 outband.WriteArray(outdata)
                 outband.FlushCache()
-
-            for outband_count, inband in enumerate(self.lw_indices()):
-                outband = outRaster.GetRasterBand(
-                    len(eo_bands) + outband_count + 1
-                )
-                outdata = (
-                    (aligned_cap[:, :, inband] + 273.15) * 100
-                )  # scale data from float degC to back to centi-Kelvin to fit into uint16
-                outdata[outdata < 0] = 0
-                outdata[outdata > 65535] = 65535
-                outdata = outdata.astype(np.ushort)
-                outband.SetDescription("LWIR")
-                outband.WriteArray(outdata)
-                outband.FlushCache()
+            
+            # Modify LWIR bands similarly if you want to keep the floating-point format
+            # for outband_count, inband in enumerate(self.lw_indices()):
+            #     outband = outRaster.GetRasterBand(len(eo_bands) + outband_count + 1)
+                
+            #     # Keep the original temperature values if desired, or adjust as needed
+            #     outdata = aligned_cap[:, :, inband]  # Remove scaling to centi-Kelvin
+            #     outdata = outdata.astype(np.float32)  # Use float32 for storing LWIR values
+            #     outband.SetDescription("LWIR")
+            #     outband.WriteArray(outdata)
+            #     outband.FlushCache()
         finally:
-            outRaster.Close()
+            # outRaster.Close()
+            outRaster.FlushCache()
+            outRaster = None 
             if write_exif:
                 imageutils.write_exif_to_stack(self, outfilename)
 
