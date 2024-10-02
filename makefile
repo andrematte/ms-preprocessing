@@ -2,8 +2,8 @@
 CONTAINER_NAME = ms-preprocessing
 IMAGE_NAME = ms-preprocessing:1.0.0
 
-INPUT_DIR = /Users/andrematte/Data/BVSA-test
-OUTPUT_DIR = /Users/andrematte/Data/BVSA-test-output
+INPUT_DIR = /Users/andrematte/Data/nesa-raw/BVSA
+OUTPUT_DIR = /Users/andrematte/Data/nesa-raw/BVSA/processed
 
 help: # Show this help
 	@egrep -h '\s#\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?# "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
