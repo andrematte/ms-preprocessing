@@ -32,6 +32,8 @@ RUN apt-get update && apt-get upgrade -y && \
     git-lfs \
     libzbar0 \
     make \
+    g++ \
+    build-essential \
     libgdal-dev \
     gdal-bin \
     gcc \
@@ -58,6 +60,11 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
+ENV C_INCLUDE_PATH=/usr/include/gdal
+
+RUN pip install setuptools==58.0.0
+RUN pip install gdal==2.4.0
 
 # Copy the application code
 # COPY ms_preprocessing ./ms_preprocessing
