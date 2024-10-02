@@ -1,7 +1,7 @@
 ARG DEV=true
 
 # Builder Image
-FROM python:3.10-buster as builder
+FROM python:3.10-buster AS builder
 
 RUN pip install poetry==1.4.2
 
@@ -22,7 +22,7 @@ RUN if [ "$DEV" = "true" ]; then \
 
 
 # Runtime Image
-FROM python:3.10-slim-buster as runtime
+FROM python:3.10-slim-buster AS runtime
 
 COPY Image-ExifTool-12.70.tar.gz ./
 
@@ -33,6 +33,7 @@ RUN apt-get update && apt-get upgrade -y && \
     libzbar0 \
     make \
     libgdal-dev \
+    gdal-bin \
     gcc \
     libffi-dev \
     libssl-dev \
@@ -57,10 +58,11 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+
 # Copy the application code
 # COPY ms_preprocessing ./ms_preprocessing
 
 # Install Jupyter globally
-# RUN pip install jupyter
-# ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
-ENTRYPOINT ["sh"]
+RUN pip install jupyter
+ENTRYPOINT ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+# ENTRYPOINT ["sh"]
