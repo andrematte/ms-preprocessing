@@ -39,6 +39,7 @@ import micasense.image as image
 import micasense.imageutils as imageutils
 import micasense.plotutils as plotutils
 import numpy as np
+import tifffile as tiff
 from skimage.feature import SIFT, match_descriptors
 from skimage.measure import ransac
 from skimage.transform import (
@@ -47,6 +48,7 @@ from skimage.transform import (
     estimate_transform,
     resize,
 )
+from utils import transfer_metadata
 
 
 class Capture(object):
@@ -687,10 +689,9 @@ class Capture(object):
         :param photometric: str GDAL argument for GTiff color matching
         """
         from osgeo import gdal
-        from osgeo.gdal import GDT_UInt16, GetDriverByName, GDT_Float32
+        from osgeo.gdal import GDT_Float32, GDT_UInt16, GetDriverByName
 
         gdal.UseExceptions()
-
         if (
             self.__aligned_capture is None
             and self.__aligned_radiometric_pan_sharpened_capture is None
@@ -716,7 +717,7 @@ class Capture(object):
             bands,
             GDT_Float32,
             options=[
-                "INTERLEAVE=BAND",
+                "INTERLEAVE=PIXEL",
                 "COMPRESS=DEFLATE",
                 f"PHOTOMETRIC={photometric}",
             ],
@@ -746,21 +747,23 @@ class Capture(object):
             for outband_count, inband in enumerate(eo_list):
                 outband = outRaster.GetRasterBand(outband_count + 1)
                 outdata = aligned_cap[:, :, inband]
-                
+
                 # Limit reflectance values to 0 - 1.0 (removing any specular reflections)
                 outdata[outdata < 0] = 0
-                outdata[outdata > 1] = 1  # Instead of 2, set the maximum reflectance to 1.0
-            
+                outdata[outdata > 1] = (
+                    1  # Instead of 2, set the maximum reflectance to 1.0
+                )
+
                 # Do not scale reflectance values; keep them as-is
-                outdata = outdata.astype(np.float32)  
+                outdata = outdata.astype(np.float32)
                 outband.SetDescription(eo_bands[outband_count])
                 outband.WriteArray(outdata)
                 outband.FlushCache()
-            
+
             # Modify LWIR bands similarly if you want to keep the floating-point format
             # for outband_count, inband in enumerate(self.lw_indices()):
             #     outband = outRaster.GetRasterBand(len(eo_bands) + outband_count + 1)
-                
+
             #     # Keep the original temperature values if desired, or adjust as needed
             #     outdata = aligned_cap[:, :, inband]  # Remove scaling to centi-Kelvin
             #     outdata = outdata.astype(np.float32)  # Use float32 for storing LWIR values
@@ -770,9 +773,84 @@ class Capture(object):
         finally:
             # outRaster.Close()
             outRaster.FlushCache()
-            outRaster = None 
+            outRaster = None
             if write_exif:
                 imageutils.write_exif_to_stack(self, outfilename)
+
+    def save_capture_as_individual_bands(
+        self,
+        output_dir,
+        id,
+        sort_by_wavelength=False,
+        photometric="MINISBLACK",
+        pansharpen=False,
+        write_exif=True,
+    ):
+        """
+        Output the Images in the Capture object as separate GeoTIFF files.
+        :param output_dir: str Directory path to save the separate bands.
+        :param sort_by_wavelength: boolean Flag to sort bands by wavelength.
+        :param photometric: str GDAL argument for GTiff color matching.
+        """
+        import os
+
+        from osgeo import gdal
+        from osgeo.gdal import GDT_Float32
+
+        gdal.UseExceptions()
+
+        if (
+            self.__aligned_capture is None
+            and self.__aligned_radiometric_pan_sharpened_capture is None
+        ):
+            raise RuntimeError(
+                "Call Capture.create_aligned_capture() prior to saving the bands."
+            )
+
+        band_names = self.band_names()
+        if "Panchro" in band_names and pansharpen:
+            aligned_cap = self.__aligned_radiometric_pan_sharpened_capture[0]
+        if "Panchro" in band_names and not pansharpen:
+            aligned_cap = self.__aligned_radiometric_pan_sharpened_capture[1]
+        if "Panchro" not in band_names:
+            aligned_cap = self.__aligned_capture
+
+        rows, cols, bands = aligned_cap.shape
+        driver = gdal.GetDriverByName("GTiff")
+
+        # Determine the order of the bands based on wavelength if specified
+        if sort_by_wavelength:
+            eo_list = list(
+                np.argsort(
+                    np.array(self.center_wavelengths())[self.eo_indices()]
+                )
+            )
+            eo_bands = list(np.array(self.eo_band_names())[np.array(eo_list)])
+        else:
+            eo_list = self.eo_indices()
+            eo_bands = list(np.array(self.eo_band_names())[np.array(eo_list)])
+
+        # Iterate through each band and save it as a separate GeoTIFF file
+        for band_idx, band_name in zip(eo_list, eo_bands):
+            input_filename = self.images[band_idx].path
+            band_filename = os.path.join(output_dir, f"{id}_{band_idx}.tif")
+
+            outdata = aligned_cap[:, :, band_idx]
+
+            # Limit reflectance values to 0 - 1.0
+            outdata[outdata < 0] = 0
+            outdata[outdata > 1] = 1
+
+            outdata = outdata.astype(np.float32)
+
+            tiff.imwrite(
+                band_filename,
+                outdata,
+                dtype=np.float32,
+            )
+
+            if write_exif:
+                transfer_metadata(input_filename, band_filename)
 
     def save_capture_as_rgb(
         self,
@@ -1200,4 +1278,5 @@ class Capture(object):
             tm[1, 2] = C[1, 1] * T[1] / z
             t_matrices.append(tm)
         warp_new = [np.dot(t, w) for w, t in zip(warp_matrices, t_matrices)]
+        return warp_new
         return warp_new

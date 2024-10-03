@@ -136,23 +136,30 @@ for i, capture in enumerate(imgset.captures):
     thumbnailFilename = capture.uuid + ".jpg"
     fullOutputPath = os.path.join(outputPath, outputFilename)
     fullThumbnailPath = os.path.join(thumbnailPath, thumbnailFilename)
-    print(fullThumbnailPath)
     if (not os.path.exists(fullOutputPath)) or overwrite:
         if len(capture.images) == len(imgset.captures[0].images):
             if panchro_cam:
-                reflectance = capture.radiometric_pan_sharpened_aligned_capture(
-                    warp_matrices=warp_matrices_SIFT,
-                    irradiance_list=irradiance,
-                    img_type = "reflectance",
+                reflectance = (
+                    capture.radiometric_pan_sharpened_aligned_capture(
+                        warp_matrices=warp_matrices_SIFT,
+                        irradiance_list=irradiance,
+                        img_type="reflectance",
+                    )
                 )
-            print(capture.undistorted_reflectance)
-            capture.save_capture_as_stack(
-                fullOutputPath,
+            # capture.save_capture_as_stack(
+            #     fullOutputPath,
+            #     pansharpen=pan_sharpen,
+            #     sort_by_wavelength=False,
+            # )
+            capture.save_capture_as_individual_bands(
+                output_dir=outputPath,
+                id=capture.uuid,
                 pansharpen=pan_sharpen,
                 sort_by_wavelength=False,
             )
             if generateThumbnails:
                 capture.save_capture_as_rgb(fullThumbnailPath)
+
     current = time.time()
     diff = current - start
     print(

@@ -1,10 +1,9 @@
-import os
 import logging
-import tifffile
+import os
+from glob import glob
 
 import numpy as np
-
-from glob import glob
+import tifffile
 from micasense.metadata import Metadata
 
 
@@ -76,11 +75,16 @@ def transfer_metadata(original_path, new_path, config_path="exiftool.config"):
     Transfer metadata from one file to another.
     Requires configuration file path.
     """
-    os.system(
-        f"exiftool -config {config_path} -tagsfromfile {original_path} -all:all>all:all {new_path}"
-    )
+    if config_path:
+        os.system(
+            f"exiftool -config {config_path} -tagsfromfile {original_path} -all:all>all:all -overwrite_original {new_path}"
+        )
+    else:
+        os.system(
+            f"exiftool -tagsfromfile {original_path} -all:all>all:all -overwrite_original {new_path}"
+        )
 
-    logging.debug(f"Transfered metadata from {original_path} to {new_path}.")
+    print(f"Transfered metadata from {original_path} to {new_path}.")
 
 
 def save_as_tiff(array, load_paths, save_path, name):
