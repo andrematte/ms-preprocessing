@@ -146,17 +146,17 @@ for i, capture in enumerate(imgset.captures):
                         img_type="reflectance",
                     )
                 )
-            # capture.save_capture_as_stack(
-            #     fullOutputPath,
-            #     pansharpen=pan_sharpen,
-            #     sort_by_wavelength=False,
-            # )
-            capture.save_capture_as_individual_bands(
-                output_dir=outputPath,
-                id=capture.uuid,
+            capture.save_capture_as_stack(
+                fullOutputPath,
                 pansharpen=pan_sharpen,
                 sort_by_wavelength=False,
             )
+            # capture.save_capture_as_individual_bands(
+            #     output_dir=outputPath,
+            #     id=capture.uuid,
+            #     pansharpen=pan_sharpen,
+            #     sort_by_wavelength=False,
+            # )
             if generateThumbnails:
                 capture.save_capture_as_rgb(fullThumbnailPath)
 
